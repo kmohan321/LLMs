@@ -127,23 +127,3 @@ class Embeddings(nn.Module):
       x = self.token_embeddings(x) + self.segment_embeddings(segment_info) +  self.positional_embeddings()
       return self.dropout(x)
     
-
-      
-      
-      
-      
-      
-      
-    
-    
-
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
