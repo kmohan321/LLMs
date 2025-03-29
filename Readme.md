@@ -1,5 +1,5 @@
 # LLMs Architecture 
-![Alt Text](images/Transformer.png)
+![Alt Text](images/Attentions.jpg)
 
 
 This repository contains implementations of **LLMs**
