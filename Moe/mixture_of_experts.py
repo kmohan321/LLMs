@@ -1,23 +1,30 @@
 import torch
 import torch.nn as nn
 
+class Expert(nn.Module):
+  def __init__(self,
+                hidden_dim: int,
+                mlp_multiplier:int
+                 ):
+      super().__init__()
+      
+      self.expert = nn.Sequential(
+        nn.Linear(hidden_dim, mlp_multiplier * hidden_dim),
+        nn.GELU(),
+        nn.Linear(mlp_multiplier * hidden_dim, hidden_dim)
+    )
+  def forward(self, x : torch.Tensor):
+      return self.expert(x)
+    
 class DenseMOE(nn.Module):
   def __init__(self,
                num_experts :int,
                hidden_dim : int,
                mlp_multiplier : int
-               
                ):
     super().__init__()
-    
-    self.expert = nn.Sequential(
-      nn.Linear(hidden_dim, mlp_multiplier * hidden_dim),
-      nn.GELU(),
-      nn.Linear(mlp_multiplier * hidden_dim, hidden_dim)
-    )
-    
     self.router = nn.Linear(hidden_dim,num_experts,bias=False) #multiplying by weight only
-    self.expert_layer = nn.ModuleList([self.expert for _ in range(num_experts)])
+    self.expert_layer = nn.ModuleList([Expert(hidden_dim,mlp_multiplier) for _ in range(num_experts)])
     
   def forward(self, x: torch.Tensor):
     
@@ -42,14 +49,9 @@ class SparseMOE(nn.Module):
     assert k <= num_experts, "k is larger than num_experts"
     self.k = k
     self.num_experts = num_experts
-    self.expert = nn.Sequential(
-      nn.Linear(hidden_dim, mlp_multiplier * hidden_dim),
-      nn.GELU(),
-      nn.Linear(mlp_multiplier * hidden_dim, hidden_dim)
-    )
-    
+
     self.router = nn.Linear(hidden_dim,num_experts,bias=False) #multiplying by weight only
-    self.expert_layer = nn.ModuleList([self.expert for _ in range(num_experts)])
+    self.expert_layer = nn.ModuleList([Expert(hidden_dim,mlp_multiplier) for _ in range(num_experts)])
     
   def forward(self,x : torch.Tensor):
     
@@ -57,6 +59,7 @@ class SparseMOE(nn.Module):
     token_probs, probs_idx = torch.topk(torch.softmax(self.router(x),dim=-1),k = self.k, dim=-1)
     
     output = torch.zeros_like(x).unsqueeze(2).expand(-1, -1, self.k, -1) #(b,s,k,d)
+    
     for expert_idx in range(self.num_experts):
       
       expert = self.expert_layer[expert_idx]
@@ -64,39 +67,10 @@ class SparseMOE(nn.Module):
       
       if mask.any():
         token_indices = torch.where(mask) #three index tensors
-        expert_tokens = x[token_indices[0], token_indices[1]] #(num_tokens,d)
-        token_weights = token_probs[token_indices[0], token_indices[1], token_indices[2]].unsqueeze(-1)  # (num_tokens, 1)
+        expert_tokens = x[token_indices[0], token_indices[1]] #(batch,expert_tokens,d)
+        token_weights = token_probs[token_indices[0], token_indices[1], token_indices[2]].unsqueeze(-1)  # (batch,expert_tokens, 1)
         processed_tokens = expert(expert_tokens) * token_weights
         output[token_indices[0], token_indices[1], token_indices[2]] = processed_tokens
         
     return torch.sum(output,dim=2)
       
-      
-      
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-  
-
-
-
-
-
-
-
-    
-    
-    
-    
-    
-    
-    
-    
-    
