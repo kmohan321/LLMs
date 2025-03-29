@@ -35,7 +35,7 @@ This repository is structured as follows:
 ---
 
 ## 💡 Future Work  
-Implement additional components for llms.
+Implement more LLMs architectures.
 
 ## ⭐ Contributions
 Feel free to contribute to this repository or suggest improvements.
