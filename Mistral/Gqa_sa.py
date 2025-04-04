@@ -1,13 +1,12 @@
 import torch
 import torch.nn as nn
-from utils import rope_apply
+from utils.rope import apply_rope
 
 class GQA_SA(nn.Module):
   def __init__(self,
                q_heads:int,
                kv_heads:int,
-               d :int,
-               w : int
+               d :int
                ):
     super().__init__()
     
@@ -31,7 +30,7 @@ class GQA_SA(nn.Module):
       k = self.wk(x).view(b, s, self.kv_heads, self.d_head)
       v = self.wv(x).view(b, s, self.kv_heads, self.d_head)
       
-      q,k = rope_apply(q, rope_freq), rope_apply(k, rope_freq)
+      q,k = apply_rope(q, rope_freq), apply_rope(k, rope_freq)
       q,k,v = q.transpose(1,2), k.transpose(1,2), v.transpose(1,2)
       
       # query -> (b, q_head, s, d_h)
