@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 
-class FFN(nn.Module):
+class FFN_SW(nn.Module):
   def __init__(self,
                hidden_dim: int,
                intermediate_dim: int
@@ -17,3 +17,16 @@ class FFN(nn.Module):
     gated_value = self.act(self.w1(x)) 
     x = gated_value * self.w3(x) #swiglu
     return self.w2(x)
+  
+class FFN(nn.Module):
+  def __init__(self, hidden_dim, act, mlp_mutiplier):
+    super().__init__()
+    
+    self.w1 = nn.Linear(hidden_dim,hidden_dim*mlp_mutiplier)
+    self.act = act()
+    self.w2 = nn.Linear(mlp_mutiplier*hidden_dim,hidden_dim)
+  def forward(self,x):
+    x = self.w1(x)
+    x = self.act(x)
+    x = self.w2(x)
+    return x
