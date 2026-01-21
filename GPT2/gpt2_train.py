@@ -3,7 +3,7 @@ import torch.nn as nn
 from tqdm.auto import tqdm
 from torch.utils.data import DataLoader
 from gpt_model import GPT
-from data import DATASET
+from .data import DATASET
 from torch.amp.grad_scaler import GradScaler
 import tiktoken as tk
 

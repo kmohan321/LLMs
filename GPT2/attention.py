@@ -1,67 +1,55 @@
 import torch
 import torch.nn as nn
 
-
-class SELF_ATTENTION(nn.Module):
+class MHA(nn.Module):
   def __init__(self,
                hidden_dim,
-               context_length,
-               heads,drop = 0.5,
+               heads,
+               drop = 0.5,
                bias = False):
     super().__init__()
     
     self.heads = heads
     self.hidden_dim = hidden_dim
     
-    # checking hidden_dim div by heads
-    assert (hidden_dim%self.heads==0), 'hidden_dim is not div by heads'
-    
-    #preparing the weight matrices
-    self.query_weights = nn.Linear(hidden_dim,hidden_dim,bias=bias)
-    self.key_weights =  nn.Linear(hidden_dim,hidden_dim,bias=bias)
-    self.value_weights = nn.Linear(hidden_dim,hidden_dim,bias=bias)
-    
-    self.drop = nn.Dropout(drop)
-
+    assert (hidden_dim % self.heads==0), 'hidden_dim is not div by heads'
     self.head_dim = hidden_dim//self.heads
     
-    # creating register_buffer(for device management)
-    self.register_buffer(
-      'masking',
-      torch.triu(torch.ones(context_length,context_length),diagonal=1)
-    )
-    self.final_linear = nn.Linear(hidden_dim,hidden_dim)
+    self.wqkv = nn.Linear(hidden_dim, 3 * self.head_dim * self.heads ,bias=bias)
     
-  def forward(self,inputs):
+    self.drop = nn.Dropout(drop)
+    self.wo = nn.Linear(self.head_dim * self.heads, hidden_dim)
+    self.scale = self.head_dim ** -0.5
     
-    batch, tokens , d_length = inputs.shape
+  def forward(self, x, past_kv = None):
     
-    querys = self.query_weights(inputs)
-    keys = self.key_weights(inputs)
-    values = self.value_weights(inputs)
+    b, s, d = x.shape
     
-    #splitting weights for heads
-    query_heads = querys.view(batch,tokens,self.heads,self.head_dim)
-    key_heads = keys.view(batch,tokens,self.heads,self.head_dim)
-    value_heads = values.view(batch,tokens,self.heads,self.head_dim)
+    q, k, v = torch.chunk(self.wqkv(x), 3, dim = -1)
     
-    query_heads = query_heads.transpose(1,2)
-    key_heads = key_heads.transpose(1,2)
-    value_heads = value_heads.transpose(1,2)
+    q = q.view(b, s, self.heads, self.head_dim).transpose(1,2)
+    k = k.view(b, s, self.heads, self.head_dim).transpose(1,2)
+    v = v.view(b, s, self.heads, self.head_dim).transpose(1,2)
     
-    #calculating the attention weights
+    if past_kv is not None:
+      k = torch.cat([past_kv[0], k], dim=2)
+      v = torch.cat([past_kv[1], v], dim=2)
+      
+    seq_len = k.shape[2]
     
-    attention_scores = torch.matmul(query_heads,key_heads.transpose(2,3))
-    attention_scores.masked_fill_(self.masking.bool()[:tokens,:tokens], -torch.inf)
-    attention_weights = torch.softmax(attention_scores/d_length**0.5,dim=-1)
+    atten_score = torch.matmul(q,k.transpose(2,3))
+    mask = torch.tril(torch.ones((seq_len, seq_len), dtype=torch.bool, device=x.device))
+    mask = mask[-q.shape[2]:, :]
+    atten_score = torch.masked_fill(atten_score, mask=mask==0, value=-torch.inf)
+    atten_weights = torch.softmax(atten_score * self.scale, dim=-1)
     
     #prevent overfitting or too much relying 
-    attention_weights = self.drop(attention_weights)
-    context_vecs = attention_weights @ value_heads
-    context_vecs = context_vecs.transpose(1,2)
-    context_vecs = context_vecs.contiguous().view(batch,tokens,self.hidden_dim)
+    atten_weights = self.drop(atten_weights)
+    out = atten_weights @ v
+    out = out.transpose(1,2)
+    out = out.contiguous().view(b, s, self.heads * self.head_dim)
     
-    return self.final_linear(context_vecs)
+    return self.wo(out), k, v
 
 
     
