@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 from .atten_gqa_kv import GQA
-from common import FFN, RMSE_NORM, Frequencies
+from common import FFN_SW, RMSE_NORM, Frequencies
 
 class Block(nn.Module):
   def __init__(self, cfg):
@@ -19,7 +19,7 @@ class Block(nn.Module):
       cfg['causal']
     )
     
-    self.ffn = FFN(
+    self.ffn = FFN_SW(
       cfg['hidden_dim'],
       cfg['intermediate_dim']
     )

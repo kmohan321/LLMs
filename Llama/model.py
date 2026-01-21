@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 from .attention_gqa import GQA
-from common import RMSE_NORM, FFN, Frequencies
+from common import RMSE_NORM, FFN_SW, Frequencies
   
 class Attention_Block(nn.Module):
   def __init__(self,config):
@@ -10,7 +10,7 @@ class Attention_Block(nn.Module):
     self.attention = GQA(config["hidden_dims"], config["num_heads_q"], config["num_heads_kv"])
     self.attention_norm = RMSE_NORM(config["hidden_dims"], config["eps"])
     self.ffn_norm = RMSE_NORM(config["hidden_dims"], config["eps"])
-    self.ffn = FFN(config["hidden_dims"], config["intermediate_size"])
+    self.ffn = FFN_SW(config["hidden_dims"], config["intermediate_size"])
     
   def forward(self,x, freq, mask):
     x = x + self.attention(self.attention_norm(x), freq, mask)
