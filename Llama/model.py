@@ -21,7 +21,7 @@ class LLama_Basic(nn.Module):
   def __init__(self,config):
     super().__init__()    
     
-    head_dim = config['hidden_dim']//config['num_heads_q']
+    head_dim = config['hidden_dims']//config['num_heads_q']
     
     self.blocks = nn.ModuleList([Attention_Block(config) for _ in range(config["num_blocks"])])
     self.embedding = nn.Embedding(config["vocab_size"],config["hidden_dims"])
