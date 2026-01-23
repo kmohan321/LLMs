@@ -23,7 +23,7 @@ class TRANSFOMER_BLOCK(nn.Module):
     
     # ffn part
     self.ffn_norm = LAYER_NORM(config['hidden_dim'], config['eps'])
-    self.ffn = FFN(config['hidden_dim'], GELU, config['mlp_multiplier'])
+    self.ffn = FFN(config['hidden_dim'], GELU(), config['mlp_multiplier'])
     
   def forward(self,x, past_kv):
     
