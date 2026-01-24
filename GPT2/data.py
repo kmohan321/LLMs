@@ -1,6 +1,7 @@
 import tiktoken as tk
 import torch
-from torch.utils.data import Dataset
+from torch.utils.data import Dataset, DataLoader
+from .train_config import config
 
 #creating dataset class from pytorch dataset class
 class DATASET(Dataset):
@@ -32,18 +33,16 @@ class DATASET(Dataset):
   def __getitem__(self,idx):
     return self.input_ids[idx] , self.output_ids[idx]
 
+with open(config['file_path'], 'r', encoding="utf-8") as f:
+    text = f.read()
 
+split_idx = int(config['train_ratio'] * len(text))
+train_data = text[:split_idx]
+val_data = text[split_idx:]
+
+train_dataset = DATASET(train_data, config['context_length'], config['stride'])
+val_dataset = DATASET(val_data, config['context_length'], config['stride'])
+
+train_loader = DataLoader(train_dataset, batch_size=config['batch_size'], shuffle=False, drop_last=True)
+val_loader = DataLoader(val_dataset, batch_size=config['batch_size'], shuffle=False, drop_last=True)
   
-  
-
-      
-      
-          
-    
-    
-    
-    
-    
-    
-    
-
