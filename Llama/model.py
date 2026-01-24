@@ -12,10 +12,11 @@ class Attention_Block(nn.Module):
     self.ffn_norm = RMSE_NORM(config["hidden_dims"], config["eps"])
     self.ffn = FFN_SW(config["hidden_dims"], config["intermediate_size"])
     
-  def forward(self,x, freq, mask):
-    x = x + self.attention(self.attention_norm(x), freq, mask)
+  def forward(self,x, freq, past_kv):
+    y, k, v = self.attention(self.attention_norm(x), freq, past_kv)
+    x = x + y
     x = x + self.ffn(self.ffn_norm(x))
-    return x
+    return x, k, v
   
 class LLama_Basic(nn.Module):
   def __init__(self,config):
@@ -29,15 +30,20 @@ class LLama_Basic(nn.Module):
     self.model_norm = RMSE_NORM(config["hidden_dims"],config["eps"])
     self.freq = Frequencies(config['seq_length'], head_dim)
     
-  def forward(self,tokens):
-    s = tokens.shape[1]
-    mask = torch.tril(torch.ones(s,s, dtype=torch.bool, device= tokens.device))
+  def forward(self, tokens, past_kv = None):
+    
     x = self.embedding(tokens)
     
-    for block in self.blocks:
-      x = block(x, self.freq.complex_freq, mask)
+    present_kv = []
+    for idx, block in enumerate(self.blocks):
+      if past_kv is not None:
+        kv_set = past_kv[idx]
+      else:
+        kv_set = past_kv
+      x, k, v = block(x, self.freq.complex_freq, kv_set)
+      present_kv.append((k,v))
     
     x = self.model_norm(x)
-    return self.final_layer(x)
+    return self.final_layer(x), present_kv
       
   

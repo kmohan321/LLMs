@@ -86,15 +86,20 @@ def generate_text(
     print("-" * 40)
   
     generated_text_so_far = ""
+    past_kv = None
     for _ in range(max_new_tokens):
         
         if tokens.shape[1] >= 2048:
             tokens = tokens[:, -2048:]
 
         with torch.no_grad():
-            logits = model(tokens)
+            if past_kv is None:
+                logits, present_kv = model(tokens, past_kv) #prefilling 
+            else:
+                logits, present_kv = model(tokens[:, -1:], past_kv)
         
-        last_token_logits = logits[:, -1, :]
+        last_token_logits = logits[:, -1]
+        past_kv = present_kv
         
         if temperature > 0:
             logits_scaled = last_token_logits / temperature
@@ -136,7 +141,7 @@ generated_text = generate_text(
     tokenizer, 
     prompt, 
     max_new_tokens=300, 
-    temperature=0.6
+    temperature=0.7
 )
 
 # print("\n" + "="*20 + " RESULT " + "="*20)
